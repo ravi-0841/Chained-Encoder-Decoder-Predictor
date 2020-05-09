@@ -104,6 +104,7 @@ if __name__ == '__main__':
                         help='Directory of wav files for conversion')
     parser.add_argument('--output_dir', type=str, 
                         help='Directory to store converted samples')
+    
     argv = parser.parse_args()
 
     model_path = argv.model_path
