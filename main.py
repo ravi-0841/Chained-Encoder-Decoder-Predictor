@@ -5,7 +5,6 @@ import time
 import librosa
 import sys
 import scipy.io.wavfile as scwav
-import joblib
 import scipy.io as scio
 import scipy.signal as scisig
 import pylab
@@ -13,16 +12,14 @@ import logging
 
 import preprocess as preproc
 
-from joblib import Parallel, delayed
 from model import EncDecGen
-from sklearn.preprocessing import StandardScaler
-
 from helper import smooth, generate_interpolation
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = "2"
 
 def train(emo_pair, train_dir, model_dir, model_name, \
             random_seed, validation_dir, output_dir, \
-            tensorboard_log_dir, pre_train=None, \
-            lambda_encoder=1, lambda_decoder=1, \
+            pre_train=None, lambda_encoder=1, lambda_decoder=1, \
             lambda_generator=1):
 
     np.random.seed(random_seed)
@@ -46,6 +43,10 @@ def train(emo_pair, train_dir, model_dir, model_name, \
                 +"_lg_"+str(lambda_generator)+'_'+emo_pair
 
     logger_file = './log/'+le_ld_lg+'.log'
+
+    if not os.path.exists('./log'):
+        os.mkdir('./log')
+
     if os.path.exists(logger_file):
         os.remove(logger_file)
 
@@ -61,14 +62,14 @@ def train(emo_pair, train_dir, model_dir, model_name, \
     logging.info("lambda_generator - {}".format(lambda_generator))
 
     if not os.path.isdir("./generated_pitch_spect/"+le_ld_lg):
-        os.mkdir("./generated_pitch_spect/" + le_ld_lg)
+        os.makedirs("./generated_pitch_spect/" + le_ld_lg)
     
     logging.info('Loading Data...')
 
     start_time = time.time()
 
-    data_train = scio.loadmat(os.path.join(train_dir, 'train.mat'))
-    data_valid = scio.loadmat(os.path.join(train_dir, 'valid.mat'))
+    data_train = scio.loadmat(os.path.join(train_dir, 'momenta_train.mat'))
+    data_valid = scio.loadmat(os.path.join(train_dir, 'momenta_valid.mat'))
     
     pitch_A_train = np.expand_dims(data_train['src_f0_feat'], axis=-1)
     pitch_B_train = np.expand_dims(data_train['tar_f0_feat'], axis=-1)
@@ -103,7 +104,7 @@ def train(emo_pair, train_dir, model_dir, model_name, \
 
     model = EncDecGen(num_mfc_features=23, pre_train=pre_train) #use pre_train arg to provide trained model
     
-    for epoch in range(1,num_epochs+1):
+    for epoch in range(1, num_epochs+1):
 
         logging.info('Epoch: %d' % epoch)
 
@@ -253,34 +254,32 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description = 'Train CycleGAN model for datasets.')
 
-    emo_dict = {"neu-ang":['neutral', 'angry'], "neu-sad":['neutral', 'sad'], "neu-hap":['neutral', 'happy']}
+    emo_dict = {'neu-ang':['neutral', 'angry'], 'neu-sad':['neutral', 'sad'], 
+                'neu-hap':['neutral', 'happy']}
 
-    emo_pair = "neu-ang"
-    train_dir_default = "./data/"+emo_pair
-    model_dir_default = "./model"
-    model_name_default = emo_pair+".ckpt"
-    validation_dir_default = './data/evaluation/'+emo_pair+'/'+emo_dict[emo_pair][0]
+    emo_pair = 'neu-ang'
+    train_dir_default = os.path.join('./data/', emo_pair)
+    model_dir_default = './model'
+    model_name_default = 'model_'+emo_pair
     output_dir_default = './validation_output/'+emo_pair
-    tensorboard_log_dir_default = './log/'+emo_pair
     random_seed_default = 0
 
-    parser.add_argument('--train_dir', type = str, help = 'Directory for training data.', \
-                        default = train_dir_default)
-    parser.add_argument('--model_dir', type = str, help = 'Directory for saving models.', \
-                        default = model_dir_default)
-    parser.add_argument('--model_name', type = str, help = 'File name for saving model.', \
-                        default = model_name_default)
-    parser.add_argument('--random_seed', type = int, help = 'Random seed for model training.', \
-                        default = random_seed_default)
-    parser.add_argument('--validation_dir', type = str, \
-                        help = 'Convert validation A after each training epoch. Set None for no conversion', \
-                        default = validation_dir_default)
-    parser.add_argument('--output_dir', type = str, \
-                        help = 'Output directory for converted validation voices.', default = output_dir_default)
-    parser.add_argument('--tensorboard_log_dir', type = str, help = 'TensorBoard log directory.', \
-                    default = tensorboard_log_dir_default)
-    parser.add_argument('--current_iter', type = int, \
-                    help = "Current iteration of the model (Fine tuning)", default = 1)
+    parser.add_argument('--emo_pair', type=str, help='Emotion Pair')
+    parser.add_argument('--train_dir', type=str, help='Directory for training data.')
+    parser.add_argument('--model_dir', type=str, help='Directory for saving models.',
+                        default='./models')
+    parser.add_argument('--model_name', type=str, help='ckpt name for saving model.', 
+                        default=model_name_default)
+    parser.add_argument('--validation_dir', type=str, \
+                        help='Convert validation data after each training epoch', \
+                        default=None)
+    parser.add_argument('--random_seed', type=int, help='Random seed for model training.', \
+                        default=random_seed_default)
+    parser.add_argument('--output_dir', type=str, 
+                        help='Output directory for converted validation voices.', 
+                        default=output_dir_default)
+    parser.add_argument('--current_iter', type=int, 
+                        help="Current iteration of the model (Fine tuning)", default = 1)
     parser.add_argument("--lambda_encoder", type=float, help="hyperparam for encoder loss", \
                     default=0.01)#0.0001
     parser.add_argument("--lambda_decoder", type=float, help="hyperparam for decoder loss", \
@@ -289,6 +288,7 @@ if __name__ == '__main__':
                     default=0.0001)#0.1
 
     argv = parser.parse_args()
+    argv.train_dir = '/home/ravi/Desktop'
 
     train_dir = argv.train_dir
     model_dir = argv.model_dir
@@ -297,7 +297,6 @@ if __name__ == '__main__':
     validation_dir = None if argv.validation_dir == 'None' or argv.validation_dir == 'none' \
                         else argv.validation_dir
     output_dir = argv.output_dir
-    tensorboard_log_dir = argv.tensorboard_log_dir
 
     lambda_encoder = argv.lambda_encoder
     lambda_decoder = argv.lambda_decoder
@@ -306,6 +305,5 @@ if __name__ == '__main__':
     train(emo_pair=emo_pair, train_dir=train_dir, model_dir=model_dir, \
             model_name=model_name+'-'+str(argv.current_iter)+".ckpt", \
             random_seed=random_seed, validation_dir=validation_dir, \
-            output_dir=output_dir, tensorboard_log_dir=tensorboard_log_dir, \
-            pre_train=None, lambda_encoder=lambda_encoder, \
+            output_dir=output_dir, pre_train=None, lambda_encoder=lambda_encoder, \
             lambda_decoder=lambda_decoder, lambda_generator=lambda_generator)

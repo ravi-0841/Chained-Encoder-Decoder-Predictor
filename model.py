@@ -1,7 +1,7 @@
 import os
 import tensorflow as tf
-from module import encoder, decoder, generator
-from utils import l1_loss, l2_loss, cross_entropy_loss
+from nn_models import encoder, decoder, generator
+from utils import l1_loss
 from datetime import datetime
 
 class EncDecGen(object):

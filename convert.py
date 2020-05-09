@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Mar  5 17:04:27 2020
-
-@author: ravi
-"""
-
 import argparse
 import os
 import librosa
@@ -13,7 +5,6 @@ import numpy as np
 import tensorflow as tf
 import scipy.io.wavfile as scwav
 import scipy.signal as scisig
-import pylab
 
 import preprocess as preproc
 
@@ -22,7 +13,7 @@ from helper import smooth, generate_interpolation
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = "2"
 
-def conversion(model_name, data_dir, output_dir, no_spec=False):
+def conversion(model_path, data_dir, output_dir, no_spec=False):
 
     sampling_rate = 16000
     num_mcep = 23
@@ -32,7 +23,7 @@ def conversion(model_name, data_dir, output_dir, no_spec=False):
         os.makedirs(output_dir)
         
     model = EncDecGen(num_mfc_features=23, pre_train=None)
-    model.load(filepath=model_name)
+    model.load(filepath=model_path)
 
     for file in os.listdir(data_dir):
 
@@ -103,29 +94,21 @@ if __name__ == '__main__':
     
     tf.reset_default_graph()
     parser = argparse.ArgumentParser(description = 'EncDecGen Model.')
-    
-    emo_pair = 'neu-ang'
-    model_name_default = './model/'+emo_pair+'_ckpt-1.ckpt'
-    data_dir_default = '/home/ravi/Desktop/Pitch-Energy/' \
-                        +'Wavenet-tts-samples/speech_US/fine-tune-angry/test'
-#    data_dir_default = '/home/ravi/Desktop/Pitch-Energy/Wavenet-tts-samples/out_of_sample'
-    output_dir_default = './converted_test/'+emo_pair+'/wavenet_fine_tune/'
-
-    parser.add_argument('--model_name', type = str, \
-                        help = 'Filename for the pre-trained model.', \
-                        default = model_name_default)
-    parser.add_argument('--data_dir', type = str, \
-                        help = 'Directory for the voices for conversion.', \
-                        default = data_dir_default)
-    parser.add_argument('--output_dir', type = str, \
-                        help = 'Directory for the converted voices.', \
-                        default = output_dir_default)
-
+    parser.add_argument('--emo_pair', type=str, 
+                        help='Emotion pair', default='neu-ang', 
+                        choices=['neu-ang', 'neu-hap', 'neu-sad'])
+    parser.add_argument('--model_path', type=str, 
+                        help='Full path to the ckpt model', 
+                        default='./model/neu-ang.ckpt')
+    parser.add_argument('--data_dir', type=str, 
+                        help='Directory of wav files for conversion')
+    parser.add_argument('--output_dir', type=str, 
+                        help='Directory to store converted samples')
     argv = parser.parse_args()
 
-    model_name = argv.model_name
+    model_path = argv.model_path
     data_dir = argv.data_dir
     output_dir = argv.output_dir
 
-    conversion(model_name=model_name, \
-               data_dir=data_dir, output_dir=output_dir, no_spec=True)
+    conversion(model_path=model_path, \
+               data_dir=data_dir, output_dir=output_dir, no_spec=False)
