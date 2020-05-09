@@ -14,7 +14,7 @@ import logging
 import preprocess as preproc
 
 from joblib import Parallel, delayed
-from model import EncDecPre
+from model import EncDecGen
 from sklearn.preprocessing import StandardScaler
 
 from helper import smooth, generate_interpolation
@@ -23,7 +23,7 @@ def train(emo_pair, train_dir, model_dir, model_name, \
             random_seed, validation_dir, output_dir, \
             tensorboard_log_dir, pre_train=None, \
             lambda_encoder=1, lambda_decoder=1, \
-            lambda_predictor=1):
+            lambda_generator=1):
 
     np.random.seed(random_seed)
 
@@ -31,7 +31,7 @@ def train(emo_pair, train_dir, model_dir, model_name, \
     mini_batch_size = 1 
     encoder_learning_rate = 0.0001
     decoder_learning_rate = 0.0001
-    predictor_learning_rate = 0.0001
+    generator_learning_rate = 0.0001
     
     sampling_rate = 16000
     num_mcep = 23
@@ -40,35 +40,35 @@ def train(emo_pair, train_dir, model_dir, model_name, \
 
     lambda_encoder = lambda_encoder
     lambda_decoder = lambda_decoder
-    lambda_predictor = lambda_predictor
+    lambda_generator = lambda_generator
 
-    le_ld_lp = "le_"+str(lambda_encoder)+"_ld_"+str(lambda_decoder) \
-                +"_lp_"+str(lambda_predictor)+'_'+emo_pair
+    le_ld_lg = "le_"+str(lambda_encoder)+"_ld_"+str(lambda_decoder) \
+                +"_lg_"+str(lambda_generator)+'_'+emo_pair
 
-    logger_file = './log/'+le_ld_lp+'.log'
+    logger_file = './log/'+le_ld_lg+'.log'
     if os.path.exists(logger_file):
         os.remove(logger_file)
 
-    logging.basicConfig(filename="./log/logger_"+le_ld_lp+".log", \
+    logging.basicConfig(filename="./log/logger_"+le_ld_lg+".log", \
                             level=logging.DEBUG)
 
     logging.info("encoder_loss - L1")
     logging.info("decoder_loss - L1")
-    logging.info("predictor_loss - L1")
+    logging.info("generator_loss - L1")
 
     logging.info("lambda_encoder - {}".format(lambda_encoder))
     logging.info("lambda_decoder - {}".format(lambda_decoder))
-    logging.info("lambda_predictor - {}".format(lambda_predictor))
+    logging.info("lambda_generator - {}".format(lambda_generator))
 
-    if not os.path.isdir("./generated_pitch_spect/"+le_ld_lp):
-        os.mkdir("./generated_pitch_spect/" + le_ld_lp)
+    if not os.path.isdir("./generated_pitch_spect/"+le_ld_lg):
+        os.mkdir("./generated_pitch_spect/" + le_ld_lg)
     
     logging.info('Loading Data...')
 
     start_time = time.time()
 
-    data_train = scio.loadmat(os.path.join(train_dir, 'train_mod_dtw_harvest.mat'))
-    data_valid = scio.loadmat(os.path.join(train_dir, 'valid_mod_dtw_harvest.mat'))
+    data_train = scio.loadmat(os.path.join(train_dir, 'train.mat'))
+    data_valid = scio.loadmat(os.path.join(train_dir, 'valid.mat'))
     
     pitch_A_train = np.expand_dims(data_train['src_f0_feat'], axis=-1)
     pitch_B_train = np.expand_dims(data_train['tar_f0_feat'], axis=-1)
@@ -88,7 +88,7 @@ def train(emo_pair, train_dir, model_dir, model_name, \
                               momenta_A2B=momenta_A2B_valid)
 
     if validation_dir is not None:
-        validation_output_dir = os.path.join(output_dir, le_ld_lp)
+        validation_output_dir = os.path.join(output_dir, le_ld_lg)
         if not os.path.exists(validation_output_dir):
             os.makedirs(validation_output_dir)
 
@@ -101,7 +101,7 @@ def train(emo_pair, train_dir, model_dir, model_name, \
                                                                    (time_elapsed % 3600 // 60), \
                                                                    (time_elapsed % 60 // 1)))
 
-    model = EncDecPre(num_mfc_features=23, pre_train=pre_train) #use pre_train arg to provide trained model
+    model = EncDecGen(num_mfc_features=23, pre_train=pre_train) #use pre_train arg to provide trained model
     
     for epoch in range(1,num_epochs+1):
 
@@ -118,7 +118,7 @@ def train(emo_pair, train_dir, model_dir, model_name, \
        
         batch_enc_loss = list()
         batch_dec_loss = list()
-        batch_pre_loss = list()
+        batch_gen_loss = list()
         batch_tot_loss = list()
 
         for i in range(n_samples // mini_batch_size):
@@ -126,7 +126,7 @@ def train(emo_pair, train_dir, model_dir, model_name, \
             start = i * mini_batch_size
             end = (i + 1) * mini_batch_size
 
-            encoder_loss, decoder_loss, predictor_loss, \
+            encoder_loss, decoder_loss, generator_loss, \
             gen_momenta, gen_pitch, gen_mfc \
                 = model.train(input_mfc_A=mfc_A[start:end], \
                             input_mfc_B=mfc_B[start:end], \
@@ -138,32 +138,32 @@ def train(emo_pair, train_dir, model_dir, model_name, \
                             lambda_generator=lambda_generator, \
                             encoder_learning_rate=encoder_learning_rate, \
                             decoder_learning_rate=decoder_learning_rate, \
-                            predictor_learning_rate = predictor_learning_rate)
+                            generator_learning_rate = generator_learning_rate)
             
             batch_enc_loss.append(encoder_loss)
             batch_dec_loss.append(decoder_loss)
-            batch_pre_loss.append(predictor_loss)
+            batch_gen_loss.append(generator_loss)
             batch_tot_loss.append(lambda_encoder*encoder_loss \
-                    + lambda_decoder*decoder_loss + lambda_predictor*predictor_loss)
+                    + lambda_decoder*decoder_loss + lambda_generator*generator_loss)
 
         model.save(directory=model_dir, filename=model_name)
 
         logging.info("Train Encoder Loss- {}".format(np.mean(batch_enc_loss)))
         logging.info("Train Decoder Loss- {}".format(np.mean(batch_dec_loss)))
-        logging.info("Train Predictor Loss- {}".format(np.mean(batch_pre_loss)))
+        logging.info("Train Generator Loss- {}".format(np.mean(batch_gen_loss)))
         logging.info("Train Total Loss- {}".format(np.mean(batch_tot_loss)))
 
         # Getting results on validation set
         
         valid_enc_loss = list()
         valid_dec_loss = list()
-        valid_pre_loss = list()
+        valid_gen_loss = list()
         valid_tot_loss = list()
 
         for i in range(mfc_A_valid.shape[0]):
             
             gen_momenta, gen_pitch, gen_mfc, \
-            enc_loss, dec_loss, pre_loss, \
+            enc_loss, dec_loss, gen_loss, \
                 = model.compute_test_loss(input_mfc_A=mfc_A_valid[i:i+1], \
                              input_pitch_A=pitch_A_valid[i:i+1], \
                              input_momenta_A2B=momenta_A2B_valid[i:i+1], \
@@ -172,9 +172,9 @@ def train(emo_pair, train_dir, model_dir, model_name, \
 
             valid_enc_loss.append(enc_loss)
             valid_dec_loss.append(dec_loss)
-            valid_pre_loss.append(pre_loss)
+            valid_gen_loss.append(gen_loss)
             valid_tot_loss.append(lambda_encoder*enc_loss \
-                    + lambda_decoder*dec_loss + lambda_predictor*pre_loss)
+                    + lambda_decoder*dec_loss + lambda_generator*gen_loss)
 
             if epoch % 100 == 0:
                 pylab.figure(figsize=(12,12))
@@ -185,13 +185,13 @@ def train(emo_pair, train_dir, model_dir, model_name, \
                 pylab.plot(gen_momenta.reshape(-1,), label="Generated Momentum")
                 pylab.legend(loc=1)
                 pylab.title("Epoch "+str(epoch)+" example "+str(i+1))
-                pylab.savefig("./generated_pitch_spect/"+le_ld_lp+'/'+str(epoch)\
+                pylab.savefig("./generated_pitch_spect/"+le_ld_lg+'/'+str(epoch)\
                                 + "_"+str(i+1)+".png")
                 pylab.close()
 
         logging.info("Valid Encoder Loss- {}".format(np.mean(valid_enc_loss)))
         logging.info("Valid Decoder Loss- {}".format(np.mean(valid_dec_loss)))
-        logging.info("Valid Predictor Loss- {}".format(np.mean(valid_pre_loss)))
+        logging.info("Valid Generator Loss- {}".format(np.mean(valid_gen_loss)))
         logging.info("Valid Total Loss- {}".format(np.mean(valid_tot_loss)))
 
         end_time_epoch = time.time()
@@ -285,7 +285,7 @@ if __name__ == '__main__':
                     default=0.01)#0.0001
     parser.add_argument("--lambda_decoder", type=float, help="hyperparam for decoder loss", \
                     default=0.0001)#0.0001
-    parser.add_argument("--lambda_predictor", type=float, help="hyperparam for predictor loss", \
+    parser.add_argument("--lambda_generator", type=float, help="hyperparam for generator loss", \
                     default=0.0001)#0.1
 
     argv = parser.parse_args()
@@ -301,11 +301,11 @@ if __name__ == '__main__':
 
     lambda_encoder = argv.lambda_encoder
     lambda_decoder = argv.lambda_decoder
-    lambda_predictor = argv.lambda_predictor
+    lambda_generator = argv.lambda_generator
 
     train(emo_pair=emo_pair, train_dir=train_dir, model_dir=model_dir, \
             model_name=model_name+'-'+str(argv.current_iter)+".ckpt", \
             random_seed=random_seed, validation_dir=validation_dir, \
             output_dir=output_dir, tensorboard_log_dir=tensorboard_log_dir, \
             pre_train=None, lambda_encoder=lambda_encoder, \
-            lambda_decoder=lambda_decoder, lambda_predictor=lambda_predictor)
+            lambda_decoder=lambda_decoder, lambda_generator=lambda_generator)

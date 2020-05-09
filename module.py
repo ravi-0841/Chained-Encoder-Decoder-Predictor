@@ -276,16 +276,16 @@ def decoder(input_momenta, input_pitch, final_filters=4, \
     return o2
 
 
-def predictor(input_mfc, input_pitch, num_mfc=23, training=True, \
-                reuse=False, scope_name='predictor'):
+def generator(input_mfc, input_pitch, num_mfc=23, training=True, \
+                reuse=False, scope_name='generator'):
 
     inputs = tf.concat([input_mfc, input_pitch], axis=1, 
-            name='predictor_input')
+            name='generator_input')
 
     # inputs has shape [batch_size, num_features, time]
     # we need to convert it to [batch_size, time, num_features] for 1D convolution
     inputs_transposed = tf.transpose(inputs, perm=[0, 2, 1], 
-            name='predictor_input_transpose')
+            name='generator_input_transpose')
 
     with tf.variable_scope(scope_name) as scope:
         # Discriminator would be reused in CycleGAN
