@@ -2,9 +2,43 @@
 
 Tensorflow+Matlab implementation of our [chained model](https://www.isca-speech.org/archive/interspeech_2020/shankar20b_interspeech.html) using diffeomorphic registration as an intermediary for prosody manipulation. 
 
+## Graphical Representation of the conversion strategy
 ![Alt text](images/graphical_model.png?raw=true "Graphical Model")
 
+## Neural Network Architecture of individual blocks
 ![Alt text](images/nn_model.png?raw=true "Neural Network Model")
+
+## Main Dependencies
+
+- Python 3.6 (or higher)
+- tensorflow 1.14
+- librosa 
+- pyworld 
+- matlab (2018 or higher)
+
+## Feature Extraction
+
+The data directory is organised as:
+```
+data
+├── neutral-angry
+│   ├── Train
+|       ├── neutral (wav files)
+|       ├── angry (wav files)
+|   ├── Valid
+|       ├── neutral (wav files)
+|       ├── angry (wav files)
+|   ├── Test
+|       ├── neutral (wav files)
+|       ├── angry (wav files)
+|
+├── neutral-happy
+│   ├── ...
+|
+├── neutral-sad
+│   ├── ...
+```
+
 
 
 
