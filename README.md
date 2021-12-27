@@ -13,7 +13,7 @@ Tensorflow+Matlab implementation of our [chained model](https://www.isca-speech.
 
 ## Main Dependencies
 
-- Python 3.6 (or higher)
+- Python 3.7 (or higher)
 - tensorflow 1.14
 - librosa 
 - pyworld 
