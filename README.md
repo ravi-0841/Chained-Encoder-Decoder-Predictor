@@ -2,11 +2,14 @@
 
 Tensorflow+Matlab implementation of our [chained model](https://www.isca-speech.org/archive/interspeech_2020/shankar20b_interspeech.html) using diffeomorphic registration as an intermediary for prosody manipulation. 
 
+
 ## Graphical Representation of the conversion strategy
 ![Alt text](images/graphical_model.png?raw=true "Graphical Model")
 
+
 ## Neural Network Architecture of individual blocks
 ![Alt text](images/nn_model.png?raw=true "Neural Network Model")
+
 
 ## Main Dependencies
 
@@ -22,13 +25,13 @@ The data directory is organised as:
 ```
 data
 ├── neutral-angry
-│   ├── Train
+│   ├── train
 |       ├── neutral (wav files)
 |       ├── angry (wav files)
-|   ├── Valid
+|   ├── valid
 |       ├── neutral (wav files)
 |       ├── angry (wav files)
-|   ├── Test
+|   ├── test
 |       ├── neutral (wav files)
 |       ├── angry (wav files)
 |
@@ -39,6 +42,22 @@ data
 │   ├── ...
 ```
 
+Extract features (mcep, f0) from each speech file.  The features are stored in pair-wise manner in .mat format (for matlab compatibility). 
+```
+python3 generate_features.py --source_dir <source (neutral) emotion wav files> --target_dir <target emotion wav files> --save_dir <directory to save extracted features> --fraction <train/valid/test>
+```
+
+Unfortunately, the above code only extracts the mel-cepstral and F0 features. We need the intermediate representation (momenta variable). We extract it using the matlab implementation of VLDDMM available in the current folder. The implementation is only available in Matlab (2018 or higher).
+
+Extract the momenta variables required for encoder training.
+```
+generate_momenta.m <path to data (.mat) files> <fraction (train/valid/test)>
+```
+The above code will create a new file momenta_<input_file.mat> in the same folder as data path.
+
+We now have the complete data required for training the model. :)
+
+## Training the Encoder-Decoder-Predictor model
 
 
 
