@@ -55,12 +55,25 @@ generate_momenta.m <path to data (.mat) files> <fraction (train/valid/test)>
 ```
 The above code will create a new file momenta_<input_file.mat> in the same folder as data path.
 
-We now have the complete data required for training the model. :)
+We now have the complete data required for training the model :)
 
 ## Training the Encoder-Decoder-Predictor model
+```
+python3 train.py --emo_pair <neu-ang/neu-hap/neu-sad> --train_dir <directory containing training momenta_.mat data> --model_dir <directory to save trained model> 
+```
+Hyperparameters like learning rate, minibatch-size, #epochs, etc can be modified in the train.py file. To modify the architecture of neural networks, check out the nn_models.py file. It contains the description of neural nets for encoder, decoder and predictor (formerly generator). 
 
+model.py defines a class that creates all the necessary placeholders, variables and functions to use for training and testing. It also generates the summaries which can be visualized using tensorboard module. 
 
+Note: There will be a separate model for every pair of emotion that the corpus contains.  
 
+## Testing the model
+To convert a set of audio files (.wav) from one emotion to another, you need to load the appropriate emotion-pair model and provide path to the data directory. 
+```
+python3 convert.py --emo_pair <neu-ang/neu-hap/neu-sad> --model_path <complete path to .ckpt file> --data_dir <directory containing .wav files for conversion> --output_dir <directory for saving the converted files> 
+```
+
+## Further links
 [Link to the models](https://drive.google.com/file/d/1INtgG17a0giI4EChgAefL1qr4RHr0Csl/view?usp=sharing)
 
 [Link to converted speech](https://livejohnshopkins-my.sharepoint.com/:u:/g/personal/rshanka3_jh_edu/EcKMK_6lh5RDqL2_xrumaS8BQ8eVoL6g6aBr86bsJnCQFA?e=RLtcvP)
